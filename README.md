@@ -26,7 +26,7 @@ X16PngConverter [-help] [FILENAME] {-bmx|-image|-tiles|-sprites} [-height] [-wid
 | (No arguments)              | Displays this text. |
 | -help/-h                    | Same as above if it is the first argument. |
 | FILENAME                    | If the filename is the only argument, the original image will be analyzed to see if conversion is possible and if so which options are possible. |
-| -bmx|-image|-tiles|-sprites | Set conversion mode. Convert to a file in the X16 Graphics Format (BMX). |
+| -bmx                        | Set conversion mode. Convert to a file in the X16 Graphics Format (BMX). |
 | -image                      | Set conversion mode. Convert to the native format of VERA. This will result in one file with raw image data, and another containing the palette (see -palette below). |
 | -tiles/-sprites             | Set conversion mode. Interpret the image as consisting of several tiles or sprites. Convert them to the native format of VERA. This will result in one file with raw tile/sprite data, and another containing the palette (see -palette below). |
 | -height/-h                  | Set the height of tiles or sprites (not used when converting to a bitmap image). Valid values for tile mode are 8 and 16, for sprites 8, 16, 32, and 64. |
@@ -39,7 +39,7 @@ X16PngConverter [-help] [FILENAME] {-bmx|-image|-tiles|-sprites} [-height] [-wid
 | -demo/-d                    | Generate a demo program in BASIC. This can be loaded to the emulator by using the -bas option. For example: x16emu -bas mysprites_demo.txt. To run it immediately add the option -run. Using this option will cause a binary palette file to be created. |
 
 ## Examples
-|                                               |                    |
+| Command                                       |                    |
 | --------------------------------------------- | ------------------ |
 | X16PngConverter                               | Display help text. |
 | X16PngConverter image.png                     | Analyse the image and see if conversion is possible. |
