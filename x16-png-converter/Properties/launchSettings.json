@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "x16-png-converter": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\johan\\OneDrive\\Datorer\\Source\\repos\\x16-png-converter-ImageSharp\\x16-png-converter\\images\\bw_circles.png -image -demo"
+    }
+  }
+}
