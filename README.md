@@ -15,7 +15,7 @@ If nothing above applies, the color of the top left pixel will receive index 0.
 At least two files will be generated: a binary file with image data and the palette in binary format or the format of assembly source code or BASIC. As a bonus a BASIC program that displays the image/tiles/sprites can be generated.
 
 ## Installation
-Download the right release for your system (Windows, MacOS or Linux). No installation is needed, there is just one executable file.
+Download the latest release, it includes versions for Windows, macOS and Linux. No installation is needed, there is just one executable file for each system.
 
 ## Syntax
 X16PngConverter [-help] [FILENAME] {-bmx|-image|-tiles|-sprites} [-height] [-width] [-palette] [-transparent] [-demo].
