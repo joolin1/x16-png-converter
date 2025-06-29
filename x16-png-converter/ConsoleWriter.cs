@@ -19,7 +19,7 @@ public class ConsoleWriter
     public static void PrintHelpText()
     {
         var lines = new string[] {
-            "This tool will convert png images to a format that the video controller (VERA) of the Commander X16 can read.",
+            "This tool will convert PNG images to a format that the video controller (VERA) of the Commander X16 can read.",
             "Both indexed images (which contain a palette) and full-color images are supported.",
             "The original file can contain an image or a number of tiles or sprites.",
             "For conversion of images, the width of the image must be 320 or 640 pixels. Height has no restrictrions.",

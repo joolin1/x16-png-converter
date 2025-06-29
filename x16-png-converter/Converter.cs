@@ -162,16 +162,37 @@ public class Converter
 
     private void CreateColorDictionariesFromPalette()
     {
+        SelectTransparentColorFromPalette();
+
         var index = 0;
+        
         foreach (var color in Palette)
         {
             index += AddToColorDictionaries(color, index) ? 1 : 0;
         }
     }
 
+    private void SelectTransparentColorFromPalette()
+    {
+        // First check if user specified a color
+        if (Args.TransparentColor == null)
+        {
+            return;
+        }
+        foreach (var color in Palette)
+        {
+            if (color.ToHex() == Args.TransparentColor)
+            {
+                SetTransparentColor(color);
+                return;
+            }
+        }
+        throw new ArgumentException($"The specified transparent color {Args.TransparentColor} was not found in the image.");
+    }
+
     private void CreateColorDictionariesFromBitmap()
     {
-        SelectTransparentColor();
+        SelectTransparentColorFromBitmap();
         var index = 1;
         for (var y = 0; y < Height; y++)
         {
@@ -200,7 +221,7 @@ public class Converter
         return false;
     }
 
-private void SelectTransparentColor() // Set which color should have index 0 in the palette and be potentially transparent
+private void SelectTransparentColorFromBitmap() // Set which color should have index 0 in the palette and be potentially transparent
     {
         // First check if user specified a color
         if (Args.TransparentColor != null)
