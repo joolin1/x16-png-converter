@@ -31,12 +31,8 @@ X16PngConverter [-help] [FILENAME] {-bmx|-image|-tiles|-sprites} [-height] [-wid
 | -tiles/-sprites             | Set conversion mode. Interpret the image as consisting of several tiles or sprites. Convert them to the native format of VERA. This will result in one file with raw tile/sprite data, and another containing the palette (see -palette below). |
 | -height/-h                  | Set the height of tiles or sprites (not used when converting to a bitmap image). Valid values for tile mode are 8 and 16, for sprites 8, 16, 32, and 64. |
 | -width/-w                   | Set the width of tiles or sprites, (not used when converting to a bitmap image). Valid values are the same as for height. |
-| -palette/-p                 | Set file format for the destination file that contains the palette. Valid values are: |
-|                             | bin - a binary file (the default). |
-|                             | asm - text file containing assembly source code). |
-|                             | bas - text file containing BASIC DATA statements. |
-| -colors/-c                  | Set number of colors in the converted image (2, 4, 16 or 256 for images and tiles. 16 or 256 for sprites). This will otherwise be set by the program. The palette will wrap around if it can't hold all the colors of the original |
-|                             | For example, this means that a color with index 18 will get index 2 if the number of colors is 16." |
+| -palette/-p                 | Set file format for the destination file that contains the palette. Valid values are: bin - a binary file (the default). asm - text file containing assembly source code). bas - text file containing BASIC DATA statements. |
+| -colors/-c                  | Set number of colors in the converted image (2, 4, 16 or 256 for images and tiles. 16 or 256 for sprites). This will otherwise be set by the program. The palette will wrap around if it can't hold all the colors of the original. For example, this means that a color with index 18 will get index 2 if the number of colors is 16." |
 | -transparent/-t             | Set which color will have index 0 in the generated palette. The value must be a 32-bit hexadecimal value in the following format: $AARRGGBB where A = alpha, R = red, G = green, and B = blue. |
 | -demo/-d                    | Generate a demo program in BASIC. This can be loaded into the emulator by using the -bas option. For example: x16emu -bas mysprites_demo.txt. To run it immediately add the option -run. Using this option will cause a binary palette file to be created. |
 
