@@ -35,8 +35,7 @@ X16PngConverter [-help] [FILENAME] {-bmx|-image|-tiles|-sprites} [-height] [-wid
 |                             | bin - a binary file (the default). |
 |                             | asm - text file containing assembly source code). |
 |                             | bas - text file containing BASIC DATA statements. |
-| -colors/-c                  | Set number of colors in the converted image (2, 4, 16 or 256 for images and tiles. 16 or 256 for sprites).
-|                             | This will otherwise be set by the program. The palette will wrap around if it can't hold all the colors of the original |
+| -colors/-c                  | Set number of colors in the converted image (2, 4, 16 or 256 for images and tiles. 16 or 256 for sprites). This will otherwise be set by the program. The palette will wrap around if it can't hold all the colors of the original |
 |                             | For example, this means that a color with index 18 will get index 2 if the number of colors is 16." |
 | -transparent/-t             | Set which color will have index 0 in the generated palette. The value must be a 32-bit hexadecimal value in the following format: $AARRGGBB where A = alpha, R = red, G = green, and B = blue. |
 | -demo/-d                    | Generate a demo program in BASIC. This can be loaded into the emulator by using the -bas option. For example: x16emu -bas mysprites_demo.txt. To run it immediately add the option -run. Using this option will cause a binary palette file to be created. |
