@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Data;
+using System.Reflection;
 using System.Text;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -71,6 +72,10 @@ public class ConsoleWriter
             "                        asm - text file containing assembly source code.",
             "                        bas - text file containing BASIC DATA statements.",
             "",
+            "-colors/-c            : Set number of colors in the converted image (2, 4, 16 or 256 for images and tiles. 16 or 256 for sprites).",
+            "                        This will otherwise be set by the program. The palette will wrap around if it can't hold all the colors of the original.",
+            "                        For example, this means that a color with index 18 will get index 2 if the number of colors are 16.", 
+            "",
             "-transparent/-t       : Set which color that will have index 0 in the generated palette.",
             "                        The value must be a 32-bit hexadecimal value in the following format:",
             "                        $aarrggbb where a = alpha, r = red, g = green and b = blue.",
@@ -112,9 +117,9 @@ public class ConsoleWriter
     {
         Console.WriteLine("Valid options:");
         Console.WriteLine("----------------------------------------");
-        if (conv.IndexColorsDictionary.Count > 256)
+        if (conv.ConversionColorCount > 256)
         {
-            Console.WriteLine($"FATAL PROBLEM: The image has to be color reduced before conversion, With the current number of colors the conversion would result in {conv.IndexColorsDictionary.Count} colors, maximum is 256.");
+            Console.WriteLine($"FATAL PROBLEM: The image has to be color reduced before conversion, With the current number of colors the conversion would result in {conv.ConversionColorCount} colors, maximum is 256.");
         }
         if (conv.Width != 320 && conv.Width != 640)
         {
@@ -162,7 +167,7 @@ public class ConsoleWriter
             Console.WriteLine($"{bytesWritten} bytes were written to {conv.FileInfo.BMXImageDataName}.");
             Console.WriteLine("The file format is BMX version 1.0 and the file contains:");
             Console.WriteLine("1. A header of 32 bytes.");
-            Console.WriteLine($"2. A palette of {conv.IndexColorsCount} colors (2 bytes each).");
+            Console.WriteLine($"2. A palette of {conv.ConversionColorCount} colors (2 bytes each).");
             Console.WriteLine($"3. {conv.SizeInBytes} bytes of image data.");
         }
         else
@@ -218,7 +223,19 @@ public class ConsoleWriter
             Console.WriteLine($"Size of each {modeSingularWord}: {conv.Args.Height * conv.Args.Width / conv.ColMode.PixelsPerByte} bytes\n");
         }
         if (conv.IndexColorsDictionary.Count <= 256) {
-            Console.WriteLine($"Number of colors     : {conv.IndexColorsDictionary.Count}");
+            Console.Write($"Number of colors     : {conv.ConversionColorCount}");
+            if (conv.ConversionColorCount < conv.IndexColorsCount)
+            {
+                Console.WriteLine($" ({conv.IndexColorsCount - conv.ConversionColorCount} colors were discarded.)");
+            }
+            else if (conv.ColMode.ColorCount > conv.IndexColorsCount)
+            {
+                Console.WriteLine($" ({conv.ColMode.ColorCount - conv.IndexColorsCount} colors were not used.)");
+            }
+            else
+            {
+                Console.WriteLine();
+            }
             Console.WriteLine($"Bits per pixel (BPP) : {conv.ColMode.BitsPerPixel}");
             Console.WriteLine($"Pixels per byte      : {conv.ColMode.PixelsPerByte}");
             Console.WriteLine($"Color depth          : {conv.ColMode.ColorDepth}\n");
@@ -237,7 +254,7 @@ public class ConsoleWriter
     {
         if (conv.Args.FileFormat != PaletteFileFormat.Binary && conv.Args.DemoRequested)
         {
-            Console.Write($"{conv.IndexColorsDictionary.Count} colors were written to { conv.FileInfo.BinPaletteName}. ");
+            Console.Write($"{conv.ConversionColorCount} colors were written to { conv.FileInfo.BinPaletteName}. ");
             return;
         }
         if (conv.Args.Mode == ConversionMode.BMX)
@@ -247,23 +264,23 @@ public class ConsoleWriter
         switch (conv.Args.FileFormat)
         {
             case PaletteFileFormat.Binary:
-                Console.WriteLine($"{conv.IndexColorsDictionary.Count} colors were written to { conv.FileInfo.BinPaletteName}.");
+                Console.WriteLine($"{conv.ConversionColorCount} colors were written to { conv.FileInfo.BinPaletteName}.");
                 break;
             case PaletteFileFormat.Assembler:
-                Console.WriteLine($"{conv.IndexColorsDictionary.Count} colors were written to {conv.FileInfo.AsmPaletteName}.");
+                Console.WriteLine($"{conv.ConversionColorCount} colors were written to {conv.FileInfo.AsmPaletteName}.");
                 break;
             case PaletteFileFormat.BASIC:
-                Console.WriteLine($"{conv.IndexColorsDictionary.Count} colors were written to {conv.FileInfo.BasicPaletteName}");
+                Console.WriteLine($"{conv.ConversionColorCount} colors were written to {conv.FileInfo.BasicPaletteName}");
                 break;
             default:
-                Console.WriteLine($"{conv.IndexColorsDictionary.Count} colors were written to { conv.FileInfo.BinPaletteName}, { conv.FileInfo.BasicPaletteName} and { conv.FileInfo.AsmPaletteName}.");
+                Console.WriteLine($"{conv.ConversionColorCount} colors were written to { conv.FileInfo.BinPaletteName}, { conv.FileInfo.BasicPaletteName} and { conv.FileInfo.AsmPaletteName}.");
                 break;
         }
     }
 
     private void PrintDemoInfo()
     {
-        Console.WriteLine("\nDemo:");
+        Console.WriteLine("Demo:");
         if (conv.SizeInBytes > 110 * 1024)
         {
             Console.WriteLine("NOTE: No demo program in BASIC has been created, a size of 110 KB is maximum for this.");
@@ -360,7 +377,7 @@ public class ConsoleWriter
         }
         Console.WriteLine("Palette:");
         Console.WriteLine("Index  VERA colors  Original colors");
-        //var index = 0;
+        var index = 0;
         foreach (var item in conv.IndexColorsDictionary.OrderBy(key => key.Value))
         {
             Console.Write($"{item.Value,5}  {item.Key} ");
@@ -372,6 +389,11 @@ public class ConsoleWriter
                 Console.Write($"{RGBAToHex(originalColors[i])}, ");
             }
             Console.WriteLine($"{RGBAToHex(originalColors[^1])}");
+
+            if (++index == conv.ConversionColorCount)
+            {
+                break; // No more colors are converted due to user restriction
+            }
         }
     }
 
@@ -382,10 +404,11 @@ public class ConsoleWriter
             return;
         }
         Console.WriteLine("Palette:");
-        Console.WriteLine("At the top of each column is the 12-bit VERA color, below corresponding color(s) in the original image.");
+        Console.WriteLine("At the top of each cell is the 12-bit VERA color, below corresponding color(s) in the original image.");
         Console.WriteLine("----------------------------------------");
         var index = 0;
         var colorList = conv.IndexColorsDictionary.OrderBy(item => item.Value).Select(item => item.Key).ToList();
+        colorList = conv.ConversionColorCount < colorList.Count ? colorList.Take(conv.ConversionColorCount).ToList() : colorList; // reduce list if user has restricted number of colors
         foreach (var veraColor in colorList)
         {
             if (index % 16 == 0)
@@ -460,15 +483,17 @@ public class ConsoleWriter
         {
             return String.Empty;
         }
-        byte r = (byte)((rgba >> 24) & 0xFF);
-        byte g = (byte)((rgba >> 16) & 0xFF);
-        byte b = (byte)((rgba >> 8) & 0xFF);
-        byte a = (byte)(rgba & 0xFF);
+        byte a = (byte)((rgba >> 24) & 0xFF);
+        byte b = (byte)((rgba >> 16) & 0xFF);
+        byte g = (byte)((rgba >> 8) & 0xFF);
+        byte r = (byte)(rgba & 0xFF);
 
-        var color = Color.FromRgba(r, g, b, a);
-        var pixel = color.ToPixel<Rgba32>();
+        return string.Format("${0:X2}{1:X2}{2:X2}{3:X2}", a, r, g, b);
 
-        return string.Format("${0:X2}{1:X2}{2:X2}{3:X2}", pixel.A, pixel.R, pixel.G, pixel.B);
+        //var color = Color.FromRgba(r, g, b, a);
+        //var pixel = color.ToPixel<Rgba32>();
+
+        //return string.Format("${0:X2}{1:X2}{2:X2}{3:X2}", pixel.A, pixel.R, pixel.G, pixel.B);
     }
 
     private static string WordInSingular(string word)

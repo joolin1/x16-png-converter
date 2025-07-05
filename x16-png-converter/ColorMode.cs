@@ -1,7 +1,10 @@
 ﻿namespace x16_png_converter;
 public class ColorMode
 {
-    public readonly int BitsPerPixel, PixelsPerByte, ColorCount, ColorDepth;
+    public readonly int BitsPerPixel;   
+    public readonly int PixelsPerByte; 
+    public readonly int ColorCount;
+    public readonly int ColorDepth;
     private readonly Dictionary<int, int> spriteColorDepthDictionary = new() { { 16, 0 }, { 256, 1 } };
     private readonly Dictionary<int, int> colorDepthDictionary = new() { { 2, 0 }, { 4, 1 }, { 16, 2 }, { 256, 3 } };
 

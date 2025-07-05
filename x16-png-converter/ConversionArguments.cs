@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using SixLabors.ImageSharp;
+using System.Text.RegularExpressions;
 
 namespace x16_png_converter;
 
@@ -20,7 +21,8 @@ public class ConversionArguments
     public ConversionMode Mode { get; set; } = ConversionMode.NotSet;
     public int Width { get; set; }
     public int Height { get; set; }
-    public string TransparentColor { get; set; }
+    public int? ColorCount { get; set; }
+    public Color? TransparentColor { get; set; }
     public PaletteFileFormat FileFormat { get; set; } = PaletteFileFormat.NotSet;
     public bool DemoRequested { get; set; } = false;
 
@@ -71,6 +73,7 @@ public class ConversionArguments
                 "-width" or "-w" => SetWidth(i),
                 "-height" or "-h" => SetHeight(i),
                 "-transparent" or "-t" => SetTransparentColor(i),
+                "-colors" or "-c" => SetColorCount(i),
                 "-palette" or "-p" => SetPaletteFileFormat(i),
                 "-demo" or "-d" => SetDemoRequested(i),
                 "-image" or "-bmx" or "-tiles" or "-sprites" => i,
@@ -156,8 +159,13 @@ public class ConversionArguments
             {
                 throw new ArgumentException($"The value {args[i]} for transparent color is not valid. It should be a 32 bit hexadecimal number with format $aarrggbb.");
             }
-            var value = match.Groups["value"];
-            TransparentColor = value.ToString().ToUpper();
+            var value = match.Groups["value"].ToString();
+            byte a = Convert.ToByte(value.Substring(0, 2), 16);
+            byte r = Convert.ToByte(value.Substring(2, 2), 16);
+            byte g = Convert.ToByte(value.Substring(4, 2), 16);
+            byte b = Convert.ToByte(value.Substring(6, 2), 16);
+            TransparentColor = Color.FromRgba(r, g, b, a);
+            //TransparentColor = Color.Frovalue.ToString().ToUpper();
             //TransparentColor = Convert.ToInt32(value.ToString(), 16);
             return i;
         }
@@ -165,6 +173,23 @@ public class ConversionArguments
         {
             throw new ArgumentException("There is no value for palette file format.");
         }
+    }
+
+    private int SetColorCount(int i)
+    {
+        try
+        {
+            ColorCount = int.Parse(args[++i]);
+        }
+        catch (IndexOutOfRangeException)
+        {
+            throw new ArgumentException($"There is no value for bitdepth.");
+        }
+        catch (Exception)
+        {
+            throw new ArgumentException($"The value {args[i]} for bitdepth is not valid.");
+        }
+        return i;
     }
 
     private int SetPaletteFileFormat(int i)

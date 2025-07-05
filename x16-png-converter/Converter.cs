@@ -2,6 +2,7 @@
 using SixLabors.ImageSharp.Formats.Png;
 using System.Text;
 using SixLabors.ImageSharp.PixelFormats;
+using System.Linq;
 
 namespace x16_png_converter;
 
@@ -19,8 +20,14 @@ public class Converter
     public int[]? PossibleSpriteHeights { get; }
     public Dictionary<VERAColor, byte> IndexColorsDictionary { get; } = [];
     public Dictionary<VERAColor, List<uint?>> OriginalColorsDictionary { get; } = [];
+
+    // Number of colors in original image
     public int OriginalColorsCount { get { return OriginalColorsDictionary.Keys.Sum(key => OriginalColorsDictionary[key].Count); } }
+    // Number of colors remaining when original 8-bit colors are converted to VERA 4-bit colors
     public int IndexColorsCount { get { return IndexColorsDictionary.Count; } }
+
+    // Number of colors in conversion which might be restricted by the user
+    public int ConversionColorCount { get { return IndexColorsCount < ColMode.ColorCount ? IndexColorsCount : ColMode.ColorCount; } }
     private PngBitDepth? BitDepth { get; set; }
     private Color[] Palette { get; set; }
     private Image<Rgba32>? SrcImage { get; set; }
@@ -51,9 +58,16 @@ public class Converter
         }
         PossibleSpriteWidths = CheckPossibleSizes(Width);
         PossibleSpriteHeights = CheckPossibleSizes(Height);
-        ColMode = new ColorMode(IndexColorsDictionary.Count, Args.Mode);
+        if (Args.ColorCount != null)
+        {
+            CheckColorCount();
+            ColMode = new ColorMode((int)Args.ColorCount, Args.Mode); // User has explicitly set number of colors 
+        }
+        else
+        {
+            ColMode = new ColorMode(IndexColorsDictionary.Count, Args.Mode);
+        }
         FileInfo = new ConversionFileInfo(args.Filename);
-
     }
 
     private static int[] CheckPossibleSizes(int size)
@@ -76,6 +90,46 @@ public class Converter
             sizes = [8];
         }
         return sizes;
+    }
+
+    private void CheckColorCount()
+    {
+        if (Args.Mode == ConversionMode.Sprites)
+        {
+            if (Args.ColorCount != 16 && Args.ColorCount !=256)
+            {
+                throw new ArgumentException($"The number of colors for sprites can not be {Args.ColorCount}. It must be 16 or 256.");
+            }
+            return;
+        }
+
+        var validCounts = new int[] { 2, 4, 16, 256 };
+        if (!validCounts.Contains((int)Args.ColorCount))
+        {
+            throw new ArgumentException($"The number of colors can not be {Args.ColorCount}. It must be 2, 4, 16 or 256.");
+        }
+    }
+
+    public int Convert()
+    {
+        CheckIfConversionPossible();
+        SizeInBytes = Height * Width / ColMode.PixelsPerByte;
+        if (Args.Mode != ConversionMode.BMX) {
+            WritePaletteFile();
+            if (SizeInBytes <= 110 * 1024 && Args.DemoRequested)
+            {
+                WriteBasicProgramFile(Path.Combine(FileInfo.Path, FileInfo.BasicProgramName));
+            }
+        }
+        else
+        {
+            if(Width == 320 && Args.DemoRequested)
+            {
+                WriteBasicProgramFile(Path.Combine(FileInfo.Path, FileInfo.BasicProgramName));
+            }
+        }
+        var filename = Args.Mode == ConversionMode.BMX ? FileInfo.BMXImageDataName : FileInfo.RawImageDataName;
+        return WriteBitmapFile(Path.Combine(FileInfo.Path, filename));
     }
 
     private void CheckIfConversionPossible()
@@ -105,28 +159,6 @@ public class Converter
         {
             throw new BadImageFormatException($"The height of the image is not divisible by {Args.Height}.");
         }
-    } 
-
-    public int Convert()
-    {
-        CheckIfConversionPossible();
-        SizeInBytes = Height * Width / ColMode.PixelsPerByte;
-        if (Args.Mode != ConversionMode.BMX) {
-            WritePaletteFile();
-            if (SizeInBytes <= 110 * 1024 && Args.DemoRequested)
-            {
-                WriteBasicProgramFile(Path.Combine(FileInfo.Path, FileInfo.BasicProgramName));
-            }
-        }
-        else
-        {
-            if(Width == 320 && Args.DemoRequested)
-            {
-                WriteBasicProgramFile(Path.Combine(FileInfo.Path, FileInfo.BasicProgramName));
-            }
-        }
-        var filename = Args.Mode == ConversionMode.BMX ? FileInfo.BMXImageDataName : FileInfo.RawImageDataName;
-        return WriteBitmapFile(Path.Combine(FileInfo.Path, filename));
     }
 
     private void WritePaletteFile()
@@ -162,9 +194,12 @@ public class Converter
 
     private void CreateColorDictionariesFromPalette()
     {
-        SelectTransparentColorFromPalette();
-
         var index = 0;
+        if (Args.TransparentColor != null)
+        {
+            SelectTransparentColorFromPalette();
+            index = 1;
+        }
         
         foreach (var color in Palette)
         {
@@ -174,14 +209,9 @@ public class Converter
 
     private void SelectTransparentColorFromPalette()
     {
-        // First check if user specified a color
-        if (Args.TransparentColor == null)
-        {
-            return;
-        }
         foreach (var color in Palette)
         {
-            if (color.ToHex() == Args.TransparentColor)
+            if (Args.TransparentColor.Equals(color))
             {
                 SetTransparentColor(color);
                 return;
@@ -223,7 +253,6 @@ public class Converter
 
 private void SelectTransparentColorFromBitmap() // Set which color should have index 0 in the palette and be potentially transparent
     {
-        // First check if user specified a color
         if (Args.TransparentColor != null)
         {
             for (var y = 0; y < Height; y++)
@@ -231,7 +260,7 @@ private void SelectTransparentColorFromBitmap() // Set which color should have i
                 for (var x = 0; x < Width; x++)
                 {
                     var color = SrcImage[x, y];
-                    if (color.ToHex() == Args.TransparentColor)
+                    if (Args.TransparentColor.Equals(color.ToHex()))
                     {
                         SetTransparentColor(color);
                         return;
@@ -272,8 +301,8 @@ private void SelectTransparentColorFromBitmap() // Set which color should have i
         byte VERAcolorDepth = BitConverter.GetBytes(ColMode.ColorDepth)[0];
         byte[] width16 = BitConverter.GetBytes(Width);
         byte[] height16 = BitConverter.GetBytes(Height);
-        byte palUsed = IndexColorsCount == 256 ? (byte)0 : BitConverter.GetBytes(IndexColorsCount)[0];
-        byte[] imgOffset = BitConverter.GetBytes(IndexColorsCount * 2 + 32); 
+        byte palUsed = ConversionColorCount == 256 ? (byte)0 : BitConverter.GetBytes(ConversionColorCount)[0];
+        byte[] imgOffset = BitConverter.GetBytes(ConversionColorCount * 2 + 32); 
 
         var bmxHeader = new byte[] {
             0x42, 0x4d, 0x58,           // header
@@ -332,6 +361,7 @@ private void SelectTransparentColorFromBitmap() // Set which color should have i
                             var veraColor = new VERAColor(color);
                             shift -= ColMode.BitsPerPixel;
                             var index = color.A == 0 ? 0 : IndexColorsDictionary[veraColor]; // if color transparent set index to 0 otherwise look up index in dictionary
+                            index = index >= ConversionColorCount ? index % ConversionColorCount : index; // if number of colors are reduced by user, just loop colors
                             byteValue += (byte)(index << shift);
                         }
                         writer.Write((byte)byteValue);
@@ -344,43 +374,61 @@ private void SelectTransparentColorFromBitmap() // Set which color should have i
         return byteCount;
     }
 
-    //private int WriteBitmapFile(string destFilename)
-    //{
-    //    using var writer = new BinaryWriter(new FileStream(destFilename, FileMode.Create, FileAccess.Write));
-    //    writer.Write(new byte[] { 0, 0 }); // add a two byte header
-    //    var byteCount = 2;
-    //    var tileWidth = Args.Width != 0 ? Args.Width : Width; // Set tile width to width of image if image conversion
-    //    int tileHeight = Args.Height != 0 ? Args.Height : Height;
+    private void WriteBinaryPaletteFile(string filename)
+    {
+        using var writer = new BinaryWriter(new FileStream(filename, FileMode.Create, FileAccess.Write));
+        writer.Write(new byte[] { 0, 0 }); // add a two byte header
+        var colors = IndexColorsDictionary.OrderBy(key => key.Value).ToArray();
 
-    //    var rowCount = Height / tileHeight;
-    //    var colCount = Width / tileWidth;
-    //    for (var row = 0; row < rowCount; row++) // loop through rows of tiles/sprites
-    //    {
-    //        for (var col = 0; col < colCount; col++) // loop through columns of tiles/sprites
-    //        {
-    //            for (var y = 0; y < tileHeight; y++) // loop through rows of pixels in tile/sprite
-    //            {
-    //                for (var x = 0; x < tileWidth; x += ColMode.PixelsPerByte) // loop through columns of pixels in tile/sprite
-    //                {
-    //                    var byteValue = 0;
-    //                    var shift = 8;
-    //                    for (var xx = 0; xx < ColMode.PixelsPerByte; xx++) // loop through pixels in same destination byte
-    //                    {
-    //                        var color = Bitmap.GetPixel(col * tileWidth + x + xx, row * tileHeight + y);
-    //                        var veraColor = new VERAColor(color);
-    //                        shift -= ColMode.BitsPerPixel;
-    //                        var index = color.A == 0 ? 0 : IndexColorsDictionary[veraColor]; // if color transparent set index to 0 otherwise look up index in dictionary
-    //                        byteValue += (byte)(index << shift);
-    //                    }
-    //                    writer.Write((byte)byteValue);
-    //                    byteCount++;
-    //                }
-    //            }
-    //        }
-    //    }
-    //    writer.Close();
-    //    return byteCount;
-    //}
+        for (var index = 0; index < ConversionColorCount; index++)
+        {
+            writer.Write(colors[index].Key.ToBinaryValues());
+        }
+        writer.Close();
+    }
+
+    private void WriteTextPaletteFile(string filename)
+    {
+        var ext = Path.GetExtension(filename);
+        var sb = new StringBuilder();
+        var colors = IndexColorsDictionary.OrderBy(key => key.Value).ToArray();
+
+        for (var index = 0; index < ConversionColorCount; index++)
+        {
+            sb.Append(ext == ".asm" ? GetAsmColorString(colors.ElementAt(index).Key, index) : GetDATAColorString(colors.ElementAt(index).Key, index));
+        }
+
+        using var writer = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write));
+        writer.WriteLine(sb.ToString());
+        writer.Close();
+    }
+
+    private static string GetAsmColorString(VERAColor veraColor, int index)
+    {
+        if (index == 0)
+        {
+            return $".word {veraColor}";
+        }
+        if (index % 16 == 0)
+        {
+            return $"\r\n.word {veraColor}";
+        }
+        return $", {veraColor}";
+    }
+
+    private static string GetDATAColorString(VERAColor veraColor, int index)
+    {
+        var startRow = 1000;
+        if (index == 0)
+        {
+            return $"{startRow} DATA {veraColor.ToBasicData()}";
+        }
+        if (index % 8 == 0)
+        {
+            return $"\r\n{startRow + 10 * index / 8} DATA {veraColor.ToBasicData()}";
+        }
+        return $",{veraColor.ToBasicData()}";
+    }
 
     private void WriteBasicProgramFile(string filename)
     {
@@ -594,61 +642,6 @@ private void SelectTransparentColorFromBitmap() // Set which color should have i
         }
         writer.WriteLine(basicProgram);
         writer.Close();
-    }
-
-    private void WriteBinaryPaletteFile(string filename)
-    {
-        using var writer = new BinaryWriter(new FileStream(filename, FileMode.Create, FileAccess.Write));
-        writer.Write(new byte[] { 0, 0 }); // add a two byte header
-        foreach (var item in IndexColorsDictionary.OrderBy(key => key.Value))
-        {
-            writer.Write(item.Key.ToBinaryValues());
-        }
-        writer.Close();
-    }
-
-    private void WriteTextPaletteFile(string filename)
-    {
-        var ext = Path.GetExtension(filename);
-        var sb = new StringBuilder();
-        var colorCount = 0;
-        var index = 0;
-        foreach (var item in IndexColorsDictionary.OrderBy(key => key.Value))
-        {
-            sb.Append(ext == ".asm" ? GetAsmColorString(item.Key, index++) : GetDATAColorString(item.Key, index++));
-            colorCount++;
-        }
-
-        using var writer = new StreamWriter(new FileStream(filename, FileMode.Create, FileAccess.Write));
-        writer.WriteLine(sb.ToString());
-        writer.Close();
-    }
-
-    private static string GetAsmColorString(VERAColor veraColor, int index)
-    {
-        if (index == 0)
-        {
-            return $".word {veraColor}";
-        }
-        if (index % 16 == 0)
-        {
-            return $"\r\n.word {veraColor}";
-        }
-        return $", {veraColor}";
-    }
-
-    private static string GetDATAColorString(VERAColor veraColor, int index)
-    {
-        var startRow = 1000;
-        if (index == 0)
-        {
-            return $"{startRow} DATA {veraColor.ToBasicData()}";
-        }
-        if (index % 8 == 0)
-        {
-            return $"\r\n{startRow + 10 * index / 8} DATA {veraColor.ToBasicData()}";
-        }
-        return $",{veraColor.ToBasicData()}";
     }
 }
 

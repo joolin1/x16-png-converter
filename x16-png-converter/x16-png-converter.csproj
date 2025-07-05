@@ -8,7 +8,7 @@
     <Authors>Johan Kårlin</Authors>
     <Company>Clergy Productions</Company>
     <Product>X16PngConverter</Product>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <PackageIcon>X16PngConverterIcon.ico</PackageIcon>
     <PackageId>X16PngConverter</PackageId>
     <ApplicationIcon>X16PngConverterIcon.ico</ApplicationIcon>
@@ -21,7 +21,8 @@
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <AssemblyVersion>1.2.0</AssemblyVersion>
+    <AssemblyVersion>1.3.0</AssemblyVersion>
+    <PublishTrimmed>True</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
   </ItemGroup>
 
   <ItemGroup>
